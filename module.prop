@@ -1,6 +1,6 @@
 id=mt_exec_bridge
 name=MT Exec Bridge
-version=v2.1
-versionCode=3
+version=v2.2
+versionCode=4
 author=GLM (Z.ai)
-description=root命令桥：写文件即以root执行。任务队列/超时看门狗/8MB上限/异步任务/审计日志/单实例锁/看门狗自愈。
+description=root命令桥：写文件即以root执行。任务队列/超时看门狗/8MB上限/异步任务/审计日志/单实例锁/看门狗自愈（v2.2 修 O_CLOEXEC 锁泄漏与 supervisor 刷屏）。

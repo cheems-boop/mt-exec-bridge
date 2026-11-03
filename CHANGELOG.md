@@ -3,6 +3,30 @@
 本项目所有对外可见的变更都记录在此文件中。
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [v2.2] - 2026-11-03
+
+### 修复
+
+- **锁 fd 被孙进程继承，桥可能永久卡死（关键）**：`LOCKFILE` 用 `open()` 打开时没设 `O_CLOEXEC`，
+  任务里只要拉起一个常驻后台进程（模块看门狗、`setsid` 守护、`nohup` 子进程），它就会把 `flock`
+  一起带进自己的 fd 表。daemon 一旦退出/被杀，锁仍被孙进程撑着，新的 `execd` 永远拿不到锁——
+  表现为 `history.log` 每 2 秒刷一行 `daemon exited, respawn in 2s`、新任务永不执行，只能重启手机。
+  修复：锁用 `O_CLOEXEC` 打开，管道改 `pipe2(pfd, O_CLOEXEC)`（`dup2` 到 1/2 的副本不受影响）。
+- **supervisor 重复拉起刷屏**：`service.sh` 被多次触发时会起多份 `supervisor.sh`，抢不到 flock 的那些
+  每秒两行写 `history.log`，把真正的审计记录完全淹没（实测 11 分钟刷出 10KB 噪音）。
+  修复：`out/supervisor.pid`（pid + `boot_id`）单实例；`execd` 若 2 秒内就退出即判定「锁被占」，
+  主动让位并只记一行 `duplicate supervisor (lock busy), exit`。
+
+### 新增
+
+- `in/cmd.sh` 自救脚本：带健康检查（daemon 还活着就直接退出），只在桥挂掉时清残留进程、
+  冒烟测试新二进制（`timeout -s KILL 1`）、重启单个 supervisor。
+  注意：`cmd.sh` 是 v1 兼容入口，守护进程会把它当普通任务执行，所以健康检查是必需的（血泪教训）。
+
+### 变更
+
+- `module.prop` → v2.2 / versionCode 4；旧二进制保留为 `bin/execd.v21.bak`
+
 ## [v2.1] - 2026-10-25
 
 ### 修复
@@ -65,7 +89,8 @@
 - 环境裸：PATH/HOME/TMPDIR 需每条命令手动设置
 - 长任务阻塞后续全部命令
 
-[Unreleased]: https://github.com/cheems-boop/mt-exec-bridge/compare/v2.1...HEAD
+[Unreleased]: https://github.com/cheems-boop/mt-exec-bridge/compare/v2.2...HEAD
+[v2.2]: https://github.com/cheems-boop/mt-exec-bridge/compare/v2.1...v2.2
 [v2.1]: https://github.com/cheems-boop/mt-exec-bridge/compare/v2.0...v2.1
 [v2.0]: https://github.com/cheems-boop/mt-exec-bridge/compare/v1.0...v2.0
 [v1.0]: https://github.com/cheems-boop/mt-exec-bridge/releases/tag/v1.0

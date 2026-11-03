@@ -12,6 +12,11 @@
  *  9. 结果文件 .tmp+rename 原子发布，读者永远看不到半截结果
  * 10. 客户端协议：写临时名（.开头）后 rename 成 in/job-*.sh 提交，杜绝半截脚本竞态
  *
+ * v2.2 修复：
+ * 11. 锁 fd / 管道 fd 一律 O_CLOEXEC —— 任务里拉起的常驻后台进程（看门狗、
+ *     setsid 守护、nohup 子）不再继承 flock。否则 daemon 一退出，锁被孙进程
+ *     撐死，新的 execd 永远抢不到 lock，桥完全卡死且只能重启手机
+ *
  * 编译：Termux  clang -O2 -o execd execd.c
  *       NDK     aarch64-linux-android24-clang -O2 -o execd execd.c
  */
@@ -201,7 +206,7 @@ static int run_sync(int ofd, const char *body, int timeout,
                     int *exitcode, int *timed_out) {
     int pfd[2];
     *timed_out = 0; *exitcode = -1;
-    if (pipe(pfd) != 0) return -1;
+    if (pipe2(pfd, O_CLOEXEC) != 0) return -1;   /* v2.2: dup2 到 1/2 的副本不受影响 */
     fflush(NULL);
     pid_t pid = fork();
     if (pid < 0) { close(pfd[0]); close(pfd[1]); return -1; }
@@ -369,7 +374,9 @@ static void process_queue(void) {
 
 int main(void) {
     ensure_dirs();
-    int lockfd = open(LOCKFILE, O_RDWR | O_CREAT, 0600);
+    /* v2.2: O_CLOEXEC —— 子进程/孙进程都不允许继承这把锁 fd，
+     * 否则任务里起的常驻后台进程会把 flock 一起带走 */
+    int lockfd = open(LOCKFILE, O_RDWR | O_CREAT | O_CLOEXEC, 0600);
     if (lockfd >= 0 && flock(lockfd, LOCK_EX | LOCK_NB) != 0) {
         return 0;   /* 已有实例 */
     }
