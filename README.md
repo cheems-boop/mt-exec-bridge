@@ -10,7 +10,7 @@
 
 ## 文档索引
 
-- [CHANGELOG.md](CHANGELOG.md) —— v1 → v2 → v2.1 完整变更记录
+- [CHANGELOG.md](CHANGELOG.md) —— v1 → v2 → v2.1 –> v2.2 完整变更记录
 - [docs/v1.md](docs/v1.md) —— 一代（v1.0）设计、协议与存档
 - [docs/v2.md](docs/v2.md) —— 二代（v2.x）协议规范与实现细节
 - [docs/ai-briefing.md](docs/ai-briefing.md) —— 「发给 AI 的一段话」：一次性告知本功能，替代常驻提示词（省 token）
@@ -217,7 +217,7 @@ export LD_LIBRARY_PATH=/data/data/com.termux/files/usr/lib
 - **v1.0** 初版：cmd.sh 单命令轮询
 - **v2.0** 十项重构：任务队列 / 动态读取+竞态检测 / 超时看门狗 / 输出上限 / 单实例锁 / 持久环境 / 异步任务 / 审计日志 / 原子发布 / 看门狗自愈
 - **v2.1** 修复：管道排空改为非阻塞读，解决「静默子进程卡住排空循环导致看门狗失效」（由超时验收测试捕获）
-
+- **v2.2** 修复锁fd被孙进程继承，桥可能永久卡死，新增自救脚本
 ---
 
 > 每个版本的完整变更明细见 [CHANGELOG.md](CHANGELOG.md)。
